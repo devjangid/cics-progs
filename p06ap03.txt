@@ -1,0 +1,147 @@
+000100  IDENTIFICATION DIVISION.                                        00010000
+000200  PROGRAM-ID. P06AP03.                                            00020000
+000300  DATA DIVISION.                                                  00030000
+000400  WORKING-STORAGE SECTION.                                        00040000
+000500  01 WS-CA             PIC X(01).                                 00050012
+000600  01 WS-EMP-ID         PIC X(05).                                 00060012
+000700  01 WS-EMP-TECH       PIC X(05).                                 00070012
+000800  01 WS-EMP-DOB        PIC X(10).                                 00080012
+000900  01 WS-EMP-EARN       PIC 9(05).                                 00090012
+001000  01 WS-EMP-DEDN       PIC 9(05).                                 00100012
+001100  01 WS-EMP-SAL        PIC 9(05).                                 00110012
+001200  01 WS-EMP-SAL-O      PIC 9(05).                                 00120012
+001300  01 WS-DATE-TIME      PIC S9(15) COMP-3 VALUE ZERO.              00130012
+001400  01 WS-RESP-CODE      PIC X(10).                                 00140012
+001500  01 PARA-TABLE              VALUE SPACES.                        00150018
+001600     03 PARA-NAME      PIC X(16) OCCURS 12 TIMES.                 00160018
+001700  01 PARA-SUB          PIC 9(02) VALUE ZERO.                      00170018
+001800         COPY EMPREC.                                             00180001
+001900         COPY P06AS03.                                            00190001
+002000         COPY DFHAID.                                             00200001
+002100 LINKAGE SECTION.                                                 00210001
+002200 01 DFHCOMMAREA   PIC X(01).                                      00220001
+002300 PROCEDURE DIVISION.                                              00230001
+002400 MAIN-PARA.                                                       00240001
+002500        IF EIBCALEN = ZERO                                        00250001
+002600             PERFORM FIRST-PARA                                   00260001
+002700        ELSE                                                      00270001
+002800             PERFORM NEXT-PARA.                                   00280001
+002900 END-PARA.                                                        00290001
+003000        EXEC CICS RETURN                                          00300001
+003100             TRANSID('P06C')                                      00310001
+003200             COMMAREA(WS-CA)                                      00320001
+003300        END-EXEC.                                                 00330001
+003400 FIRST-PARA.                                                      00340001
+003500          ADD 1 TO PARA-SUB                                       00350018
+003600          IF PARA-SUB < 13                                        00360018
+003700               MOVE 'FIRST PARA      ', TO PARA-NAME(PARA-SUB)    00370018
+003800          END-IF                                                  00380018
+003900          MOVE LOW-VALUES TO EIPO                                 00390007
+004000          PERFORM SEND-PARA.                                      00400005
+004100 SEND-PARA.                                                       00410001
+004200        ADD 1 TO PARA-SUB                                         00420018
+004300        IF PARA-SUB < 13                                          00430018
+004400              MOVE 'FIRST PARA     ' TO PARA-NAME(PARA-SUB)       00440018
+004500        END-IF                                                    00450018
+004600        PERFORM DATE-TIME-PARA.                                   00460001
+004700        EXEC CICS SEND                                            00470001
+004800            MAP('EIP')                                            00480001
+004900            MAPSET('P06AS03')                                     00490001
+005000            FROM(EIPO)                                            00500001
+005100            ERASE                                                 00510002
+005200        END-EXEC.                                                 00520002
+005300 NEXT-PARA.                                                       00530004
+005400        ADD 1 TO PARA-SUB                                         00540018
+005500        IF PARA-SUB < 13                                          00550018
+005600                MOVE 'FIRST PARA    ' TO PARA-NAME(PARA-SUB)      00560018
+005700        END-IF                                                    00570018
+005800        EVALUATE EIBAID                                           00580004
+005900          WHEN DFHPF3                                             00590004
+006000             EXEC CICS XCTL                                       00600004
+006100                PROGRAM('P06AS03')                                00610004
+006200             END-EXEC                                             00620005
+006300          WHEN DFHENTER                                           00630004
+006400             PERFORM PROCESS-PARA                                 00640004
+006500          WHEN OTHER                                              00650004
+006600              MOVE 'INVALID KEY PRESSED' TO MESSAGEO              00660004
+006700        END-EVALUATE                                              00670004
+006800        PERFORM SEND-PARA.                                        00680004
+006900 PROCESS-PARA.                                                    00690000
+007000        ADD 1 TO PARA-SUB                                         00700018
+007100        IF PARA-SUB < 13                                          00710018
+007200            MOVE 'PROCESS-PARA   ' TO PARA-NAME(PARA-SUB)         00720018
+007300        END-IF                                                    00730018
+007400        PERFORM RECEIVE-MAP.                                      00740007
+007500        IF IDL = ZERO                                             00750007
+007600        MOVE 'PLEASE ENTER AN EMPLOYEE ID' TO MESSAGEO            00760000
+007700        ELSE                                                      00770007
+007800          IF IDI =  SPACES                                        00780007
+007900          MOVE 'PLEASE ENTER A VALID EMPLOYEE-ID' TO MESSAGEO     00790007
+008000         ELSE                                                     00800007
+008100          PERFORM READ-EMPLOYEE                                   00810000
+008200         END-IF                                                   00820007
+008300      END-IF.                                                     00830007
+008400 READ-EMPLOYEE.                                                   00840000
+008500        ADD 1 TO PARA-SUB                                         00850019
+008600        IF PARA-SUB < 13                                          00860019
+008700            MOVE 'READ-EMPLOYEE  ' TO PARA-NAME(PARA-SUB)         00870019
+008800        END-IF                                                    00880019
+008900        EXEC CICS READ                                            00890013
+009000            FILE('P06AFILE')                                      00900013
+009100            RIDFLD(IDI)                                           00910014
+009200            INTO(MASTER-RECORD)                                   00920013
+009300            RESP(WS-RESP-CODE)                                    00930013
+009400         END-EXEC                                                 00940013
+009500        EVALUATE WS-RESP-CODE                                     00950011
+009600          WHEN DFHRESP(NORMAL)                                    00960011
+009700               MOVE EMP-ID  TO IDO                                00970011
+009800               MOVE EMP-NAME TO NAMEO                             00980011
+009900               MOVE EMP-TECH TO TECHO                             00990011
+010000               MOVE EMP-LOC TO LOCO                               01000011
+010100               MOVE EMP-EARN TO EARNO                             01010011
+010200             PERFORM MOVE-DOB-PARA                                01020012
+010300                MOVE WS-EMP-EARN TO EARNO                         01030011
+010400                MOVE EMP-DEDN TO DEDNO                            01040011
+010500                MOVE WS-EMP-DEDN TO DEDNO                         01050011
+010600                  COMPUTE WS-EMP-SAL = WS-EMP-EARN - WS-EMP-DEDN  01060016
+010700                MOVE WS-EMP-SAL TO WS-EMP-SAL-O                   01070011
+010800                MOVE WS-EMP-SAL-O TO SALO                         01080011
+010900                MOVE 'EMPLOYEE DETAILS NOT FOUND' TO MESSAGEO     01090012
+011000          WHEN DFHRESP(NOTFND)                                    01100011
+011100                MOVE SPACES TO NAMEO, DOBO, TECHO, LOCO,          01110012
+011200                MOVE 'EMPLOYEE RECORD NOT FOUND' TO MESSAGEO      01120012
+011300          WHEN OTHER                                              01130011
+011400                MOVE 'ERROR ACCESSING FILE' TO MESSAGEO           01140010
+011500                MOVE SPACES TO NAMEO, DOBO, TECHO, LOCO,          01150012
+011600         END-EVALUATE.                                            01160011
+011700 MOVE-DOB-PARA.                                                   01170006
+011800         ADD 1 TO PARA-SUB                                        01180018
+011900         IF PARA-SUB < 13                                         01190018
+012000              MOVE 'MOVE-DOB-PARA   ' TO PARA-NAME(PARA-SUB)      01200018
+012100         END-IF                                                   01210018
+012200         MOVE EMP-DOB TO DOBO.                                    01220011
+012300 RECEIVE-MAP.                                                     01230006
+012400         ADD 1 TO PARA-SUB                                        01240018
+012500         IF PARA-SUB < 13                                         01250018
+012600             MOVE 'RECEIVE-MAP    ' TO PARA-NAME(PARA-SUB)        01260018
+012700         END-IF                                                   01270018
+012800         EXEC CICS RECEIVE                                        01280006
+012900             MAP('EIP')                                           01290017
+013000             MAPSET('P06AS03')                                    01300006
+013100             INTO(EIPO)                                           01310017
+013200         END-EXEC.                                                01320006
+013300 DATE-TIME-PARA.                                                  01330006
+013400        ADD 1 TO PARA-SUB                                         01340018
+013500        IF PARA-SUB < 13                                          01350018
+013600             MOVE 'DATE-TIME-PARA   ' TO PARA-NAME(PARA-SUB)      01360018
+013700        END-IF                                                    01370019
+013800        EXEC CICS ASKTIME                                         01380006
+013900             ABSTIME(WS-DATE-TIME)                                01390010
+014000        END-EXEC.                                                 01400016
+014100        EXEC CICS FORMATTIME                                      01410015
+014200             ABSTIME(WS-DATE-TIME)                                01420015
+014300             DDMMYYYY(SYSDATEO)                                   01430016
+014400             DATESEP                                              01440016
+014500             TIME(SYSTIMEO)                                       01450015
+014600             TIMESEP                                              01460015
+014700        END-EXEC.                                                 01470015

@@ -1,0 +1,79 @@
+000100 IDENTIFICATION DIVISION.                                         00010004
+000200 PROGRAM-ID. P06AP01.                                             00020004
+000300 DATA DIVISION.                                                   00030004
+000400 WORKING-STORAGE SECTION.                                         00040004
+000500 01 WS-CA    PIC X(01).                                           00050004
+000600 01 WS-INP1  PIC 9(02).                                           00060004
+000700 01 WS-IN1O REDEFINES WS-INP1 PIC X(02).                          00070004
+000800 01 WS-INP2  PIC 9(02).                                           00080004
+000900 01 WS-IN2O REDEFINES WS-INP2 PIC X(02).                          00090004
+001000 01 WS-OUTO   PIC 9(03).                                          00100004
+001100 01 WS-OUTA  PIC 9(03).                                           00110004
+001200 01 WS-OUTS  PIC 9(03).                                           00120004
+001300 01 WS-OUTM  PIC 9(03).                                           00130004
+001400 01 WS-MESSAGE PIC X(30) VALUE                                    00140004
+001500        'END OF THE PGM,BYE BYE'.                                 00150004
+001600     COPY P06AS01.                                                00160004
+001700     COPY DFHAID.                                                 00170004
+001800 LINKAGE SECTION.                                                 00180004
+001900 01 DFHCOMMAREA    PIC X(01).                                     00190004
+002000 PROCEDURE DIVISION.                                              00200004
+002100 MAIN-PARA.                                                       00210004
+002200       IF EIBCALEN = ZERO                                         00220004
+002300          PERFORM FIRST-PARA                                      00230004
+002400       ELSE                                                       00240004
+002500          PERFORM NEXT-PARA.                                      00250004
+002600 END-PARA.                                                        00260004
+002700       EXEC CICS RETURN                                           00270004
+002800          TRANSID('P06A')                                         00280004
+002900          COMMAREA(WS-CA)                                         00290004
+003000       END-EXEC.                                                  00300004
+003100 FIRST-PARA.                                                      00310004
+003200       MOVE LOW-VALUES TO CALMAPO.                                00320004
+003300       PERFORM SEND-MAP.                                          00330004
+003400 SEND-MAP.                                                        00340004
+003500       EXEC CICS SEND                                             00350004
+003600          MAP('CALMAP')                                           00360004
+003700          MAPSET('P06AS01')                                       00370004
+003800          FROM(CALMAPO)                                           00380004
+003900          ERASE                                                   00390004
+004000       END-EXEC.                                                  00400004
+004100 NEXT-PARA.                                                       00410004
+004200       IF EIBAID = DFHPF3                                         00420004
+004300         EXEC CICS SEND TEXT                                      00430004
+004400              FROM(WS-MESSAGE)                                    00440004
+004500              ERASE                                               00450004
+004600         END-EXEC                                                 00460004
+004700         EXEC CICS RETURN                                         00470004
+004800         END-EXEC                                                 00480004
+004900       ELSE                                                       00490004
+005000       IF EIBAID = DFHENTER                                       00500004
+005100          PERFORM PROCESS-PARA                                    00510004
+005200       ELSE                                                       00520004
+005300          MOVE 'INVALID KEY PRESSED' TO MESSAGEO.                 00530004
+005400          PERFORM SEND-MAP.                                       00540004
+005500 PROCESS-PARA.                                                    00550004
+005600       PERFORM RECEIVE-MAP                                        00560004
+005700       IF INP1L = ZERO OR INP2L = ZERO                            00570004
+005800          MOVE 'PLEASE ENTER VALID INPUTS' TO MESSAGEO            00580004
+005900       ELSE                                                       00590004
+006000          IF INP1I IS NUMERIC AND INP2I IS NUMERIC                00600004
+006100             MOVE INP1I TO WS-IN1O                                00610004
+006200             MOVE INP2I TO WS-IN2O                                00620004
+006300             COMPUTE WS-OUTA = WS-INP1 + WS-INP2                  00630004
+006400             COMPUTE WS-OUTS = WS-INP1 - WS-INP2                  00640004
+006500             COMPUTE WS-OUTM = WS-INP1 * WS-INP2                  00650004
+006600                MOVE WS-OUTA TO WS-OUTO                           00660004
+006700                MOVE WS-OUTO TO ADDO                              00670004
+006800                MOVE WS-OUTS TO SUBO                              00680006
+006900                MOVE WS-OUTM TO MULO                              00690006
+007000                MOVE 'SUM OF 2 NUMBERS IS DISPLAYED' TO MESSAGEO  00700004
+007100          ELSE                                                    00710004
+007200             MOVE 'INPUTS ARE NOT NUMERIC' TO MESSAGEO.           00720004
+007300             PERFORM SEND-MAP.                                    00730004
+007400 RECEIVE-MAP.                                                     00740004
+007500       EXEC CICS RECEIVE                                          00750004
+007600           MAP('CALMAP')                                          00760004
+007700           MAPSET('P06AS01')                                      00770004
+007800           INTO(CALMAPI)                                          00780004
+007900       END-EXEC.                                                  00790004
